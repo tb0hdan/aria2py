@@ -2,11 +2,31 @@
 # -*- coding: utf-8 -*-
 
 import json
+from random import seed as rs, choice as rc
 import requests
+from string import ascii_lowercase as sl, digits as sg
 try:
     import subprocess
 except ImportError:
     import subprocess32
+
+class Aria2Response(object):
+    '''
+    '''
+    def __init__(self, response=None):
+        self.response = response if type(response) == dict else json.loads(response)
+
+    @property
+    def r_id(self):
+        return self.response.get('id', None)
+
+    @property
+    def r_rpcver(self):
+        return self.response.get('jsonrpc', None)
+
+    @property
+    def r_hash(self):
+        return self.response.get('result', None)
 
 class Aria2Command(object):
     '''
@@ -14,12 +34,24 @@ class Aria2Command(object):
     def __init__(self, conn_uri=None):
         self.conn_uri = conn_uri if conn_uri else 'http://localhost:6800/jsonrpc'
         self.r_rpcver = '2.0'
-        self.r_id = 'xxx'
-        self.known_commands = ['addUri']
+        self.r_id = ''.join([rc([x for x in sl + sg]) for x in xrange(1,8)])
+        self.known_commands = [
+            'addUri', 'addTorrent', 'addMetalink', 'remove',
+            'forceRemove', 'pause', 'pauseAll', 'forcePause',
+            'forcePauseAll', 'unpause', 'unpauseAll',
+            'tellStatus', 'getUris', 'getFiles',
+            'getPeers', 'getServers', 'tellActive',
+            'tellWaiting', 'tellStopped', 'changePosition',
+            'changeUri', 'getOption', 'changeOption',
+            'getGlobalOption', 'changeGlobalOption',
+            'getGlobalStat', 'purgeDownloadResult',
+            'removeDownloadResult', 'getVersion',
+            'getSessionInfo', 'shutdown', 'forceShutdown'
+        ]
 
     def __getattr__(self, name):
         def api_call(args, **kwargs):
-            jsonreq = json.dumps({'jsonrpc':'2.0', 'id':'qwer',
+            jsonreq = json.dumps({'jsonrpc':'2.0', 'id': self.r_id,
                       'method':'aria2.%s' % name,
                       'params':[['http://example.org/file']]})
             print 'API Call %s %s' % (name, kwargs)
@@ -39,25 +71,6 @@ class Aria2Client(object):
 
     def test(self):
         pass
-
-
-class Aria2Response(object):
-    '''
-    '''
-    def __init__(self, response=None):
-        self.response = response if type(response) == dict else json.loads(response)
-
-    @property
-    def r_id(self):
-        return self.response.get('id', None)
-
-    @property
-    def r_rpcver(self):
-        return self.response.get('jsonrpc', None)
-
-    @property
-    def r_hash(self):
-        return self.response.get('result', None)
 
 
 if __name__ == '__main__':
