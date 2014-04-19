@@ -50,11 +50,11 @@ class Aria2Command(object):
         ]
 
     def __getattr__(self, name):
-        def api_call(args, **kwargs):
+        def api_call(defarg=None, **kwargs):
             jsonreq = json.dumps({'jsonrpc':'2.0', 'id': self.r_id,
                       'method':'aria2.%s' % name,
                       'params':[['http://example.org/file']]})
-            print 'API Call %s %s' % (name, kwargs)
+            print 'API Call %s %s %s' % (name, defarg, kwargs)
             r = requests.post(self.conn_uri, data=jsonreq)
             return Aria2Response(r.text)
 
@@ -69,11 +69,11 @@ class Aria2Client(object):
     def __init__(self, conn_uri):
         self.aria2 = Aria2Command(conn_uri)
 
-    def test(self):
-        pass
-
+    def __del__(self):
+        self.aria2.forceShutdown()
 
 if __name__ == '__main__':
     c = Aria2Client('http://localhost:6800/jsonrpc')
-    response = c.aria2.addUri('z')
+    response = c.aria2.addUri('1', a='c')
     print response.r_hash
+
