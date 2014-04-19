@@ -5,6 +5,8 @@ import json
 from random import seed as rs, choice as rc
 import requests
 from string import ascii_lowercase as sl, digits as sg
+import time
+import thread
 try:
     import subprocess
 except ImportError:
@@ -49,11 +51,19 @@ class Aria2Command(object):
             'getSessionInfo', 'shutdown', 'forceShutdown'
         ]
 
+    def __prepare_args__(self, name, args):
+        '''
+        '''
+        print name, args
+        return [['http://example.com']]
+
     def __getattr__(self, name):
         def api_call(defarg=None, **kwargs):
-            jsonreq = json.dumps({'jsonrpc':'2.0', 'id': self.r_id,
-                      'method':'aria2.%s' % name,
-                      'params':[['http://example.org/file']]})
+            kwargs['defarg'] = defarg
+            params = self.__prepare_args__(name, kwargs)
+            jsonreq = json.dumps({'jsonrpc': '2.0', 'id': self.r_id,
+                      'method': 'aria2.%s' % name,
+                      'params': params})
             print 'API Call %s %s %s' % (name, defarg, kwargs)
             r = requests.post(self.conn_uri, data=jsonreq)
             return Aria2Response(r.text)
@@ -66,14 +76,39 @@ class Aria2Command(object):
 class Aria2Client(object):
     '''
     '''
-    def __init__(self, conn_uri):
-        self.aria2 = Aria2Command(conn_uri)
+    def __init__(self, conn_uri=None, start_daemon=True):
+        self.stopLock = False
+        self.aria2 = Aria2Command(conn_uri=conn_uri)
+        if start_daemon:
+            self.start_daemon()
+
+    def ariaStop(self):
+        if not self.stopLock:
+            self.aria2.forceShutdown()
+            self.stopLock = True
 
     def __del__(self):
-        self.aria2.forceShutdown()
+        self.ariaStop()
+
+    def aria_daemon(self):
+        '''
+        '''
+        proc = subprocess.Popen(['aria2c', '--enable-rpc' ,'--rpc-allow-origin-all=true'],
+                        stdout=subprocess.PIPE,
+                        )
+        stdout_value = proc.communicate()[0]
+
+    def start_daemon(self):
+        '''
+        '''
+        thread.start_new_thread(self.aria_daemon,())
+
+    def stop_daemon(self):
+        self.ariaStop()
 
 if __name__ == '__main__':
-    c = Aria2Client('http://localhost:6800/jsonrpc')
+    c = Aria2Client()
     response = c.aria2.addUri('1', a='c')
     print response.r_hash
+
 
